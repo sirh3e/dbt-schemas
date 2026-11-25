@@ -15,5 +15,5 @@ dbt Labs' schemas, under the Apache License 2.0 (LICENSE-APACHE):
     commit d63e174a73312504393e8e1c21c0ef560d474860
     dbt/{manifest/v12,run-results/v6,sources/v3,catalog/v1}.json
 
-The files under schemas/*/processed/ are derived from them by
-schemas/preprocess.py, and are under the same licence.
+What build.rs derives from them (build/preprocess.rs) is under the same
+licence.

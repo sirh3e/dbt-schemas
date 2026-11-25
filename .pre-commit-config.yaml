@@ -1,0 +1,35 @@
+# Git hooks, run with prek (https://prek.j178.dev — the Rust pre-commit
+# runner; the plain `pre-commit` tool reads this file too):
+#
+#   just hooks            # once: installs the pre-commit and commit-msg hooks
+#   prek run --all-files  # run everything by hand
+#
+# All hooks are local and use the repository's own toolchain: nothing is
+# downloaded at hook time.
+default_install_hook_types: [pre-commit, commit-msg]
+repos:
+  - repo: local
+    hooks:
+      - id: fmt
+        name: cargo fmt --check
+        entry: cargo fmt --all --check
+        language: system
+        types: [rust]
+        pass_filenames: false
+      - id: clippy
+        name: cargo clippy (zero warnings)
+        entry: cargo clippy --all-targets -- -D warnings
+        language: system
+        files: \.(rs|json|toml)$
+        pass_filenames: false
+      - id: test
+        name: cargo test
+        entry: cargo test --quiet
+        language: system
+        files: \.(rs|json|toml)$
+        pass_filenames: false
+      - id: conventional-commit
+        name: the commit message is a Conventional Commit (git-cliff reads it)
+        entry: scripts/conventional-commit.sh
+        language: script
+        stages: [commit-msg]

@@ -9,12 +9,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
-      - run: cargo fmt --check
-      - run: cargo clippy --all-targets -- -D warnings
-      - run: cargo test
-      - run: cargo test --doc
-      - name: processed schemas are committed
-        run: ./schemas/generate.sh && git diff --exit-code -- 'schemas/*/processed'
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: just,git-cliff
+      # build.rs preprocesses the schemas and fails the build if a field the
+      # projection or RELAX_TO_ANY names is gone upstream
+      - run: just check
+      - name: the history parses as Conventional Commits
+        run: git cliff --unreleased > /dev/null
