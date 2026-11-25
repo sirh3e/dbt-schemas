@@ -77,6 +77,11 @@ pub fn sniff(value: &serde_json::Value) -> Option<SchemaVersion> {
     })
 }
 
+/// The dbt releases a document can be from (see [`crate::dbt`]).
+pub fn dbt_releases(value: &serde_json::Value) -> Vec<&'static crate::dbt::DbtRelease> {
+    crate::dbt::releases_of_document(value)
+}
+
 /// The version of a document that must be of `family`.
 pub fn sniff_family(value: &serde_json::Value, family: &'static str) -> Result<u32, DispatchError> {
     let found = sniff(value).ok_or(DispatchError::NoVersion)?;

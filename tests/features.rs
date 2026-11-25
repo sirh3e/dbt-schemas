@@ -6,6 +6,9 @@
 #[path = "../build/catalog.rs"]
 #[allow(dead_code)]
 mod catalog;
+#[path = "../build/dbt_releases.rs"]
+#[allow(dead_code)]
+mod dbt_releases;
 
 use std::collections::BTreeSet;
 use std::path::Path;
@@ -78,10 +81,53 @@ fn expected() -> String {
         "# every manifest version's complete types (large: v12 alone is 186 KB of code)\n",
     );
     out.push_str(&format!("manifests-full = {}\n", list(&manifests)));
+    out.push_str(&dbt_features());
     let mut each = of(&[Kind::Yaml, Kind::Artifact, Kind::ManifestProjection]);
     each.sort_by_key(|f| sort_key(f));
     for feature in each {
         out.push_str(&format!("{feature} = []\n"));
+    }
+    out
+}
+
+/// The features by dbt release (`build/dbt_releases.rs`): one per release,
+/// its aliases, and a group per major version.
+fn dbt_features() -> String {
+    let releases = dbt_releases::RELEASES;
+    let mut out = String::from(
+        "# by dbt release: what each writes and reads (build/dbt_releases.rs), manifests as\n\
+         # projections\n",
+    );
+    let names: Vec<String> = releases
+        .iter()
+        .map(|r| dbt_releases::feature_of(r.dbt))
+        .collect();
+    out.push_str(&format!("dbt-all = {}\n", list(&names)));
+    let mut majors: Vec<&str> = releases
+        .iter()
+        .map(|r| r.dbt.split('.').next().unwrap())
+        .collect();
+    majors.dedup();
+    for major in majors {
+        let members: Vec<String> = releases
+            .iter()
+            .filter(|r| r.dbt.split('.').next() == Some(major))
+            .map(|r| dbt_releases::feature_of(r.dbt))
+            .collect();
+        out.push_str(&format!("dbt-{major} = {}\n", list(&members)));
+    }
+    for (alias, dbt) in dbt_releases::ALIASES {
+        out.push_str(&format!(
+            "dbt-{alias} = {}\n",
+            list(&[dbt_releases::feature_of(dbt)])
+        ));
+    }
+    for release in releases {
+        out.push_str(&format!(
+            "{} = {}\n",
+            dbt_releases::feature_of(release.dbt),
+            list(&dbt_releases::schema_features(release))
+        ));
     }
     out
 }
@@ -132,5 +178,32 @@ fn the_features_are_what_the_submodules_hold() {
     assert!(
         manifest == wanted,
         "Cargo.toml's [features] differs from what the submodules hold; run `just features`"
+    );
+}
+
+#[test]
+fn the_default_features_are_the_latest_dbt_release() {
+    let (_, latest) = dbt_releases::ALIASES
+        .iter()
+        .find(|(alias, _)| *alias == "latest")
+        .unwrap();
+    let release = dbt_releases::RELEASES
+        .iter()
+        .find(|r| r.dbt == *latest)
+        .unwrap();
+    let manifest =
+        std::fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join("Cargo.toml")).unwrap();
+    let default_line = manifest
+        .split("\ndefault = ")
+        .nth(1)
+        .and_then(|rest| rest.split(']').next())
+        .unwrap();
+    let mut defaults: Vec<&str> = default_line.split('"').skip(1).step_by(2).collect();
+    defaults.sort();
+    let mut wanted = dbt_releases::schema_features(release);
+    wanted.sort();
+    assert_eq!(
+        defaults, wanted,
+        "the default features are what dbt {latest} reads"
     );
 }

@@ -85,6 +85,109 @@ manifests-full = [
     "manifest-v11",
     "manifest-v12",
 ]
+# by dbt release: what each writes and reads (build/dbt_releases.rs), manifests as
+# projections
+dbt-all = [
+    "dbt-0-19",
+    "dbt-0-20",
+    "dbt-0-21",
+    "dbt-1-0",
+    "dbt-1-1",
+    "dbt-1-2",
+    "dbt-1-3",
+    "dbt-1-4",
+    "dbt-1-5",
+    "dbt-1-6",
+    "dbt-1-7",
+    "dbt-1-8",
+    "dbt-1-9",
+    "dbt-1-10",
+    "dbt-1-11",
+    "dbt-2-0",
+]
+dbt-0 = ["dbt-0-19", "dbt-0-20", "dbt-0-21"]
+dbt-1 = [
+    "dbt-1-0",
+    "dbt-1-1",
+    "dbt-1-2",
+    "dbt-1-3",
+    "dbt-1-4",
+    "dbt-1-5",
+    "dbt-1-6",
+    "dbt-1-7",
+    "dbt-1-8",
+    "dbt-1-9",
+    "dbt-1-10",
+    "dbt-1-11",
+]
+dbt-2 = ["dbt-2-0"]
+dbt-latest = ["dbt-1-11"]
+dbt-fusion = ["dbt-2-0"]
+dbt-0-19 = ["manifest-projection-v1", "run-results-v1", "sources-v1", "catalog-v1"]
+dbt-0-20 = ["manifest-projection-v2", "run-results-v2", "sources-v1", "catalog-v1"]
+dbt-0-21 = ["manifest-projection-v3", "run-results-v3", "sources-v2", "catalog-v1"]
+dbt-1-0 = ["manifest-projection-v4", "run-results-v4", "sources-v3", "catalog-v1"]
+dbt-1-1 = ["manifest-projection-v5", "run-results-v4", "sources-v3", "catalog-v1"]
+dbt-1-2 = ["manifest-projection-v6", "run-results-v4", "sources-v3", "catalog-v1"]
+dbt-1-3 = ["manifest-projection-v7", "run-results-v4", "sources-v3", "catalog-v1"]
+dbt-1-4 = ["manifest-projection-v8", "run-results-v4", "sources-v3", "catalog-v1"]
+dbt-1-5 = [
+    "manifest-projection-v9",
+    "run-results-v4",
+    "sources-v3",
+    "catalog-v1",
+    "yaml-1-5",
+]
+dbt-1-6 = [
+    "manifest-projection-v10",
+    "run-results-v4",
+    "sources-v3",
+    "catalog-v1",
+    "yaml-1-6",
+]
+dbt-1-7 = [
+    "manifest-projection-v11",
+    "run-results-v5",
+    "sources-v3",
+    "catalog-v1",
+    "yaml-1-7",
+]
+dbt-1-8 = [
+    "manifest-projection-v12",
+    "run-results-v6",
+    "sources-v3",
+    "catalog-v1",
+    "yaml-latest",
+]
+dbt-1-9 = [
+    "manifest-projection-v12",
+    "run-results-v6",
+    "sources-v3",
+    "catalog-v1",
+    "yaml-latest",
+]
+dbt-1-10 = [
+    "manifest-projection-v12",
+    "run-results-v6",
+    "sources-v3",
+    "catalog-v1",
+    "yaml-latest",
+]
+dbt-1-11 = [
+    "manifest-projection-v12",
+    "run-results-v6",
+    "sources-v3",
+    "catalog-v1",
+    "yaml-latest",
+]
+dbt-2-0 = [
+    "manifest-projection-v12",
+    "run-results-v6",
+    "sources-v3",
+    "catalog-v1",
+    "freshness-v0",
+    "yaml-latest-fusion",
+]
 catalog-v0 = []
 catalog-v1 = []
 freshness-v0 = []

@@ -32,6 +32,35 @@ feature, from two upstream repositories checked out as git submodules:
   has; `artifacts::sniff` says which schema a document names, and
   `artifacts::SCHEMA_IDS` lists every one upstream has.
 
+## Feature flags by dbt release
+
+Most projects know their dbt version, not their schema numbers, so there is a
+feature per dbt release, which turns on what that release writes and reads (a
+manifest as its projection; add `manifest-v<N>` for its complete types):
+
+```toml
+dbt-schemas = { git = "https://github.com/sirh3e/dbt-schemas", tag = "v0.1.1", default-features = false, features = ["dbt-1-7"] }
+```
+
+| Feature | dbt | manifest | run-results | sources | catalog | freshness | YAML |
+|---|---|---|---|---|---|---|---|
+| `dbt-0-19` | 0.19 | v1 | v1 | v1 | v1 | | |
+| `dbt-0-20` | 0.20 | v2 | v2 | v1 | v1 | | |
+| `dbt-0-21` | 0.21 | v3 | v3 | v2 | v1 | | |
+| `dbt-1-0` | 1.0 | v4 | v4 | v3 | v1 | | |
+| `dbt-1-1` … `dbt-1-4` | 1.1 … 1.4 | v5 … v8 | v4 | v3 | v1 | | |
+| `dbt-1-5` | 1.5 | v9 | v4 | v3 | v1 | | `1.5` |
+| `dbt-1-6` | 1.6 | v10 | v4 | v3 | v1 | | `1.6` |
+| `dbt-1-7` | 1.7 | v11 | v5 | v3 | v1 | | `1.7` |
+| `dbt-1-8` … `dbt-1-11` | 1.8 … 1.11 | v12 | v6 | v3 | v1 | | `latest` |
+| `dbt-2-0` | 2.0 (Fusion) | v12 | v6 | v3 | v1 | v0 | `latest_fusion` |
+
+- `dbt-latest` is `dbt-1-11`, which the default features equal, and `dbt-fusion` is `dbt-2-0`.
+- `dbt-0`, `dbt-1` and `dbt-2` turn on every release of a major version, and `dbt-all` all of them.
+- **Where the table comes from:** every 0.x and 1.x row was read from dbt-core's own source at the release's tag, and the 2.0 row from dbt's documentation. Rows are kept by hand in `build/dbt_releases.rs`, which says where each one comes from, and a test holds each row to the schemas upstream has.
+- **At run time,** `dbt::release("1.7.14")` gives a release's schemas and feature, and whether this build has them. `dbt::releases_of("manifest", 12)` gives the releases that write a schema version, and `artifacts::dbt_releases(&json)` the releases a document can be from.
+- **A schema version upstream adds is released at once** with its own feature. The bot's pull request lists it under "Not in any dbt release flag yet" until someone adds the release's row.
+
 | Module | What |
 |---|---|
 | `yaml` | `load_marked`, `to_json`, `from_json`, `get`, `as_str`, `entries`, `items`, `position_of`, `span_of`, `syntax_error`, `Position`, `Span` |

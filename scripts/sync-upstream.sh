@@ -109,6 +109,37 @@ DBT_SCHEMAS_WRITE=1 cargo test --quiet --test features
 just check
 cargo test --quiet --all-features
 
+# what no dbt release flag includes yet: each family's newest version and any
+# YAML variant. Not a failure: it is built and released with its own feature,
+# and a person adds its dbt release to build/dbt_releases.rs.
+features_table=$(awk '/^\[features\]/ { on = 1; next } /^\[/ { on = 0 } on' Cargo.toml)
+in_dbt_flags=$(printf '%s\n' "$features_table" | awk '
+    /^[a-z0-9-]+ = / { key = $1 }
+    key ~ /^dbt-/ { line = $0; while (match(line, /"[^"]+"/)) { print substr(line, RSTART + 1, RLENGTH - 2); line = substr(line, RSTART + RLENGTH) } }
+' | sort -u)
+leaves=$(printf '%s\n' "$features_table" | sed -n 's/^\([a-z0-9-]*\) = \[\]$/\1/p')
+newest=$( { printf '%s\n' "$leaves" | grep -E -- '-v[0-9]+$' | grep -v '^manifest-v' \
+    | sed -E 's/^(.*)-v([0-9]+)$/\1 \2/' | sort -k1,1 -k2,2n \
+    | awk '{ last[$1] = $2 } END { for (f in last) print f "-v" last[f] }'
+    printf '%s\n' "$leaves" | grep '^yaml-'; } | sort)
+unmapped=()
+while read -r feature; do
+    [ -n "$feature" ] || continue
+    if ! printf '%s\n' "$in_dbt_flags" | grep -qx -- "$feature"; then unmapped+=("$feature"); fi
+done <<< "$newest"
+if [ ${#unmapped[@]} -gt 0 ]; then
+    {
+        echo "### Not in any dbt release flag yet"
+        echo
+        echo "These are built and released with their own feature, but no \`dbt-<major>-<minor>\`"
+        echo "feature includes them. Add the dbt release that writes them to"
+        echo "\`build/dbt_releases.rs\` (and \`just features\`):"
+        echo
+        for f in "${unmapped[@]}"; do echo "- \`$f\`"; done
+        echo
+    } >> "$body"
+fi
+
 # the version, by what the public types did since the last release
 last=$(git describe --tags --abbrev=0 --match 'v*')
 current=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -n 1)

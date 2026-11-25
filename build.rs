@@ -21,6 +21,8 @@ use typify::{TypeSpace, TypeSpaceSettings, UnknownPolicy};
 
 #[path = "build/catalog.rs"]
 mod catalog;
+#[path = "build/dbt_releases.rs"]
+mod dbt_releases;
 #[path = "build/preprocess.rs"]
 mod preprocess;
 
@@ -184,6 +186,7 @@ fn index(entries: &[Entry], built: &[(Entry, Option<String>)]) -> String {
     out.push_str(&artifact_reexports(&tree, built));
     out.push_str(&processed_table(built));
     out.push_str(&schema_ids(entries));
+    out.push_str(&releases());
     out
 }
 
@@ -381,6 +384,43 @@ fn schema_ids(entries: &[Entry]) -> String {
         let _ = writeln!(out, "    \"{id}\",");
     }
     out.push_str("];\n");
+    out
+}
+
+/// `__dbt::RELEASES`: the dbt releases of `build/dbt_releases.rs`, each with
+/// its features and whether this build has all of them.
+fn releases() -> String {
+    let mut out = String::from(
+        "\n#[doc(hidden)]\npub mod __dbt {\n    pub const RELEASES: &[crate::dbt::DbtRelease] = &[\n",
+    );
+    for release in dbt_releases::RELEASES {
+        let features = dbt_releases::schema_features(release);
+        let built = features.iter().all(|f| enabled(f));
+        let artifacts: Vec<String> = release
+            .artifacts
+            .iter()
+            .map(|(family, version)| format!("(\"{family}\", {version})"))
+            .collect();
+        let quoted: Vec<String> = features.iter().map(|f| format!("\"{f}\"")).collect();
+        let yaml = match release.yaml {
+            Some(y) => format!("Some(\"{y}\")"),
+            None => "None".into(),
+        };
+        let _ = writeln!(
+            out,
+            "        crate::dbt::DbtRelease {{ dbt: \"{}\", feature: \"{}\", artifacts: &[{}], yaml: {yaml}, features: &[{}], built: {built}, source: \"{}\" }},",
+            release.dbt,
+            dbt_releases::feature_of(release.dbt),
+            artifacts.join(", "),
+            quoted.join(", "),
+            release.source,
+        );
+    }
+    out.push_str("    ];\n    pub const ALIASES: &[(&str, &str)] = &[");
+    for (alias, dbt) in dbt_releases::ALIASES {
+        let _ = write!(out, "(\"{alias}\", \"{dbt}\"), ");
+    }
+    out.push_str("];\n}\n");
     out
 }
 

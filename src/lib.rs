@@ -8,6 +8,8 @@
 //!   soon as they are read.
 //! - [`artifacts`]: the artifact families, `Any<Family>` to read a document
 //!   as the version it names, and the `$id` of every schema.
+//! - [`dbt`]: the dbt releases, the schemas each writes (`dbt::release("1.7.14")`), and
+//!   the `dbt-<major>-<minor>` features that build them.
 //! - [`yaml`]: dbt YAML files parsed once with saphyr, into a
 //!   [`serde_json::Value`] the generated types deserialize from, with the
 //!   position of every node.
@@ -20,6 +22,7 @@
 //! and generates the types with typify at build time. See the README.
 
 pub mod artifacts;
+pub mod dbt;
 mod error;
 pub mod generated;
 pub mod processed;
