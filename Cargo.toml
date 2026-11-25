@@ -30,11 +30,11 @@ doctest = false
 # Generated from the upstream submodules by tests/features.rs; `just features`
 # writes it again. One feature per YAML variant and per artifact version.
 default = [
-    "yaml-latest",
+    "manifest-projection-v12",
     "run-results-v6",
     "sources-v3",
     "catalog-v1",
-    "manifest-projection-v12",
+    "yaml-latest",
 ]
 # everything: every variant and version, complete manifests included
 all = ["yaml-all", "artifacts-all", "manifests-full"]

@@ -153,29 +153,19 @@ fn index(entries: &[Entry], built: &[(Entry, Option<String>)]) -> String {
         node.leaves
             .push((entry.name.clone(), entry.stem(), entry.clone()));
     }
-    // each family's newest version at its root, when it is built
+    // each family's newest version this build has, at its root: a version
+    // upstream adds that the features leave off moves no root away
     for family in NEWEST_AT_ROOT {
-        let Some(version) = catalog::newest(entries, family) else {
-            continue;
-        };
         let module = catalog::module_of(family);
         if let Some(node) = tree.children.get_mut(&module)
-            && node
-                .leaves
-                .iter()
-                .any(|(name, ..)| *name == format!("v{version}"))
+            && let Some(version) = newest_leaf(node)
         {
             node.glob = Some(format!("v{version}"));
         }
     }
-    // a manifest's root is its newest projection, as it has always been
-    if let Some(version) = catalog::newest(entries, "manifest")
-        && let Some(manifest) = tree.children.get_mut("manifest")
-        && manifest.children.get("projection").is_some_and(|p| {
-            p.leaves
-                .iter()
-                .any(|(name, ..)| *name == format!("v{version}"))
-        })
+    // a manifest's root is its newest projection built, as it has always been
+    if let Some(manifest) = tree.children.get_mut("manifest")
+        && let Some(version) = manifest.children.get("projection").and_then(newest_leaf)
     {
         manifest.glob = Some(format!("projection::v{version}"));
     }
@@ -188,6 +178,14 @@ fn index(entries: &[Entry], built: &[(Entry, Option<String>)]) -> String {
     out.push_str(&schema_ids(entries));
     out.push_str(&releases());
     out
+}
+
+/// The newest `v<N>` module of a family's node.
+fn newest_leaf(node: &Tree) -> Option<u32> {
+    node.leaves
+        .iter()
+        .filter_map(|(name, ..)| name.strip_prefix('v')?.parse().ok())
+        .max()
 }
 
 fn render(tree: &Tree, out: &mut String, depth: usize) {

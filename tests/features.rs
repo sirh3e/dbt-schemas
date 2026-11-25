@@ -15,10 +15,6 @@ use std::path::Path;
 
 use catalog::Kind;
 
-/// The artifact families the default features build the newest version of,
-/// beside the latest YAML schemas and the newest manifest projection.
-const DEFAULT_FAMILIES: &[&str] = &["run-results", "sources", "catalog"];
-
 fn list(features: &[String]) -> String {
     let quoted: Vec<String> = features.iter().map(|f| format!("\"{f}\"")).collect();
     let one_line = format!("[{}]", quoted.join(", "));
@@ -45,15 +41,10 @@ fn expected() -> String {
         out.dedup();
         out
     };
-    let mut default = vec!["yaml-latest".to_string()];
-    for family in DEFAULT_FAMILIES {
-        if let Some(v) = catalog::newest(&entries, family) {
-            default.push(format!("{family}-v{v}"));
-        }
-    }
-    if let Some(v) = catalog::newest(&entries, "manifest") {
-        default.push(format!("manifest-projection-v{v}"));
-    }
+    // the default features are what the newest dbt release reads
+    // (`dbt-latest`): a schema version upstream adds moves them only once its
+    // release is in build/dbt_releases.rs
+    let default = dbt_releases::schema_features(latest_release());
     let manifests: Vec<String> = of(&[Kind::Artifact])
         .into_iter()
         .filter(|f| f.starts_with("manifest-v"))
@@ -88,6 +79,18 @@ fn expected() -> String {
         out.push_str(&format!("{feature} = []\n"));
     }
     out
+}
+
+/// The release `dbt-latest` names.
+fn latest_release() -> &'static dbt_releases::DbtRelease {
+    let (_, latest) = dbt_releases::ALIASES
+        .iter()
+        .find(|(alias, _)| *alias == "latest")
+        .expect("build/dbt_releases.rs names a latest release");
+    dbt_releases::RELEASES
+        .iter()
+        .find(|r| r.dbt == *latest)
+        .expect("the latest release is a row")
 }
 
 /// The features by dbt release (`build/dbt_releases.rs`): one per release,

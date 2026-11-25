@@ -17,11 +17,13 @@ feature, from two upstream repositories checked out as git submodules:
 | [schemas.getdbt.com](https://github.com/dbt-labs/schemas.getdbt.com) | `manifest` v0–v12, `run-results` v0–v6, `sources` v0–v3, `catalog` v0–v1, `freshness` v0 | `artifacts::<family>::v<N>` | `<family>-v<N>` (`run-results-v5`) |
 | | each manifest's projection (below) | `artifacts::manifest::projection::v<N>` | `manifest-projection-v<N>` |
 
-- **The default features** are what the crate has always built: `yaml-latest`,
-  the newest `run-results`, `sources` and `catalog`, and the newest manifest
-  projection. `yaml-all`, `artifacts-all`, `manifests-full` (every manifest's
+- **The default features** are what the newest dbt release reads,
+  `dbt-latest` (below): today the latest YAML schemas, run-results v6, sources
+  v3, catalog v1 and the manifest v12 projection, what the crate has always
+  built. A version upstream adds is an optional feature until its dbt release
+  is in the table. `yaml-all`, `artifacts-all`, `manifests-full` (every manifest's
   complete types, large) and `all` group the rest; `Cargo.toml` lists them.
-- **A family's root is its newest version:** `artifacts::run_results::*` is
+- **A family's root is its newest version the build has:** `artifacts::run_results::*` is
   `run_results::v6::*`, `artifacts::manifest::*` the newest projection, and
   `generated::dbt_project` (and `dbt_yml_files`, `packages`, `selectors`) the
   latest YAML schemas, where they have always been.
