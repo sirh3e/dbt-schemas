@@ -10,7 +10,8 @@
 #   4. cargo-semver-checks against the last tag picks the version: what it
 #      finds more than a patch bumps the minor (0.x), anything else the patch
 #   5. commit the sync (feat: a new schema file; fix: a changed one; `!` when
-#      breaking), then `chore(release): v<version>` with CHANGELOG.md
+#      breaking), then `chore(release): v<version>` with CHANGELOG.md; when no
+#      schema file changed, only the sync, as `chore(schemas)`: no release
 #
 # Writes the pull request's body to target/sync/pr-body.md and, on GitHub, `changed`, `version` and `title` to
 # $GITHUB_OUTPUT. Leaves the commits on the current branch; pushing and the
@@ -79,6 +80,31 @@ changed=()
     fi
 } > "$body"
 
+names=$(printf '%s\n' "${moved[@]}" | xargs -n1 basename | paste -sd, - | sed 's/,/, /g')
+sync_message() {
+    echo "$1"
+    echo
+    for sub in "${moved[@]}"; do echo "$sub: ${old[$sub]} -> ${new[$sub]}"; done
+}
+
+# upstream moved, but no schema did (a README, the site's HTML): follow it
+# without a release, as the types are the same
+if [ ${#added[@]} -eq 0 ] && [ ${#changed[@]} -eq 0 ]; then
+    title="chore(schemas): follow upstream $names"
+    {
+        echo "### Release"
+        echo
+        echo "No schema file changed, so the types are the same: no release."
+    } >> "$body"
+    git add -- .gitmodules schemas
+    sync_message "$title" | git commit --quiet -F -
+    echo "followed upstream without a release: $title"
+    output changed true
+    output version ""
+    output title "$title"
+    exit 0
+fi
+
 DBT_SCHEMAS_WRITE=1 cargo test --quiet --test features
 just check
 cargo test --quiet --all-features
@@ -119,8 +145,17 @@ elif [ ${#added[@]} -gt 0 ]; then
 else
     kind='fix(schemas)'
 fi
-names=$(printf '%s\n' "${moved[@]}" | xargs -n1 basename | paste -sd, - | sed 's/,/, /g')
 title="$kind: follow upstream $names"
+# what is new, in the words of the features: `run-results v7`, `yaml 1.8/dbt_project`
+if [ ${#added[@]} -gt 0 ]; then
+    new_names=$(for f in "${added[@]}"; do
+        case "$f" in
+            */dbt/*/v*.json) f=${f#*/dbt/}; echo "${f%%/*} $(basename "${f%.json}")" ;;
+            */schemas/*/*.json) f=${f#*/schemas/}; echo "yaml ${f%%-*}" ;;
+        esac
+    done | sort -u | paste -sd, - | sed 's/,/, /g')
+    if [ -n "$new_names" ]; then title="$title: $new_names"; fi
+fi
 {
     echo
     echo "### Release"
@@ -138,11 +173,7 @@ title="$kind: follow upstream $names"
 rm -rf "$baseline"
 
 git add -A -- .gitmodules schemas Cargo.toml Cargo.lock
-git commit --quiet -F - <<EOF
-$title
-
-$(for sub in "${moved[@]}"; do echo "$sub: ${old[$sub]} -> ${new[$sub]}"; done)
-EOF
+sync_message "$title" | git commit --quiet -F -
 
 perl -pi -e 'if (!$done && s/^version = ".*"/version = "'"$version"'"/) { $done = 1 }' Cargo.toml
 cargo update --quiet --workspace

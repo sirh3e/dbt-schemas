@@ -50,7 +50,7 @@ jobs:
         with:
           token: ${{ secrets.DBT_SCHEMAS_BOT_TOKEN }}
           branch: bot/upstream-sync
-          title: ${{ steps.sync.outputs.title }} (v${{ steps.sync.outputs.version }})
+          title: ${{ steps.sync.outputs.title }}${{ steps.sync.outputs.version != '' && format(' (v{0})', steps.sync.outputs.version) || '' }}
           body-path: target/sync/pr-body.md
           delete-branch: true
           labels: upstream
