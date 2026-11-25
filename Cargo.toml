@@ -6,7 +6,7 @@ rust-version = "1.85"
 license = "MIT AND Apache-2.0"
 repository = "https://github.com/sirh3e/dbt-schemas"
 description = "Rust types for dbt's YAML files and JSON artifacts, generated from dbt-labs' JSON Schemas, and marked-YAML helpers"
-keywords = ["dbt", "json-schema", "yaml", "manifest"]
+keywords = ["dbt", "json-schema", "yaml", "manifest", "avro"]
 categories = ["parser-implementations", "development-tools"]
 include = [
     "src/**",
@@ -85,6 +85,9 @@ manifests-full = [
     "manifest-v11",
     "manifest-v12",
 ]
+# Avro schemas of every schema the other features build, and documents
+# encoded with them (the `avro` module, apache-avro): opt in, in no group
+avro = ["dep:apache-avro"]
 # by dbt release: what each writes and reads (build/dbt_releases.rs), manifests as
 # projections
 dbt-all = [
@@ -235,6 +238,8 @@ yaml-latest = []
 yaml-latest-fusion = []
 
 [dependencies]
+# the `avro` feature; 0.21 is the newest whose rust-version is this crate's
+apache-avro = { version = "0.21", optional = true }
 regress = "0.12"
 saphyr = "0.3"
 serde = { version = "1", features = ["derive"] }

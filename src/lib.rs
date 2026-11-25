@@ -16,12 +16,16 @@
 //! - [`schema_keys`] and [`schema_walk`]: the property names and values the
 //!   schemas allow, at the top or along any YAML path, for completion.
 //! - [`processed`]: the processed schemas as text, and the latest YAML ones parsed.
+//! - `avro` (feature `avro`): every schema built as an Avro schema, and
+//!   documents encoded and decoded with them.
 //!
 //! The schemas are the upstream repositories, git submodules under
 //! `schemas/upstream/`; `build.rs` preprocesses them (`build/preprocess.rs`)
 //! and generates the types with typify at build time. See the README.
 
 pub mod artifacts;
+#[cfg(feature = "avro")]
+pub mod avro;
 pub mod dbt;
 mod error;
 pub mod generated;
