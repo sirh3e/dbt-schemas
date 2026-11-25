@@ -4,21 +4,34 @@ on:
     branches: [main]
     tags: ["v*"]
   pull_request:
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
+          submodules: recursive
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
       - uses: taiki-e/install-action@v2
         with:
-          tool: just,git-cliff
-      # build.rs preprocesses the schemas and fails the build if a field the
-      # projection or RELAX_TO_ANY names is gone upstream
+          tool: just,git-cliff,cargo-hack
+      - uses: Swatinem/rust-cache@v2
+      # rustfmt, clippy and the tests of the default features; build.rs fails
+      # the build if a name the drift guards hold is gone upstream
       - run: just check
+      - name: every variant and version builds and passes
+        run: cargo test --all-features
+      - name: clippy with every feature, and with none
+        run: |
+          cargo clippy --all-targets --all-features -- -D warnings
+          cargo clippy --all-targets --no-default-features -- -D warnings
+      - name: each feature builds alone
+        run: cargo hack check --each-feature --no-dev-deps
       - name: the history parses as Conventional Commits
         run: git cliff --unreleased > /dev/null

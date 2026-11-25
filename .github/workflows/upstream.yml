@@ -1,0 +1,61 @@
+# Follows dbt Labs' schema repositories. Once a day (or on demand) it moves
+# the submodules to their newest commits; when they moved it builds and tests
+# every variant and version, lets cargo-semver-checks pick the version,
+# commits the sync and the release (scripts/sync-upstream.sh, `just sync`),
+# and opens a pull request that merges itself once CI passes. The merge is
+# released by release.yml. A schema typify cannot read, or a name the drift
+# guards hold gone upstream, fails this job: nothing is released until a
+# person fixes it.
+#
+# Needs the secret DBT_SCHEMAS_BOT_TOKEN (a fine-grained token, or a GitHub
+# App's, with contents and pull requests read/write): a pull request opened
+# with GITHUB_TOKEN starts no CI, so it could never merge itself. The README
+# has the one-time setup.
+name: upstream
+on:
+  schedule:
+    - cron: "17 5 * * *"
+  workflow_dispatch:
+permissions:
+  contents: write
+  pull-requests: write
+concurrency:
+  group: upstream
+  cancel-in-progress: false
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          submodules: recursive
+          token: ${{ secrets.DBT_SCHEMAS_BOT_TOKEN }}
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: just,git-cliff,cargo-semver-checks
+      - uses: Swatinem/rust-cache@v2
+      - name: the bot's identity
+        run: |
+          git config user.name "dbt-schemas bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+      - id: sync
+        run: scripts/sync-upstream.sh
+      - id: pr
+        if: steps.sync.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.DBT_SCHEMAS_BOT_TOKEN }}
+          branch: bot/upstream-sync
+          title: ${{ steps.sync.outputs.title }}${{ steps.sync.outputs.version != '' && format(' (v{0})', steps.sync.outputs.version) || '' }}
+          body-path: target/sync/pr-body.md
+          delete-branch: true
+          labels: upstream
+      - name: merge once CI passes
+        if: steps.pr.outputs.pull-request-number != ''
+        env:
+          GH_TOKEN: ${{ secrets.DBT_SCHEMAS_BOT_TOKEN }}
+        run: gh pr merge --auto --merge "${{ steps.pr.outputs.pull-request-number }}"

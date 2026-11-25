@@ -8,7 +8,231 @@ repository = "https://github.com/sirh3e/dbt-schemas"
 description = "Rust types for dbt's YAML files and JSON artifacts, generated from dbt-labs' JSON Schemas, and marked-YAML helpers"
 keywords = ["dbt", "json-schema", "yaml", "manifest"]
 categories = ["parser-implementations", "development-tools"]
-include = ["src/**", "build.rs", "build/**", "schemas/**/*.json", "README.md", "CHANGELOG.md", "LICENSE", "LICENSE-APACHE", "NOTICE"]
+include = [
+    "src/**",
+    "build.rs",
+    "build/**",
+    "schemas/upstream/dbt-jsonschema/schemas/*/*.json",
+    "schemas/upstream/schemas.getdbt.com/dbt/*/v*.json",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE",
+    "LICENSE-APACHE",
+    "NOTICE",
+]
+
+[lib]
+# typify copies upstream's descriptions into doc comments, and some hold code
+# blocks that are not Rust (manifest v10's FileSlice): no doctests here.
+doctest = false
+
+[features]
+# Generated from the upstream submodules by tests/features.rs; `just features`
+# writes it again. One feature per YAML variant and per artifact version.
+default = [
+    "manifest-projection-v12",
+    "run-results-v6",
+    "sources-v3",
+    "catalog-v1",
+    "yaml-latest",
+]
+# everything: every variant and version, complete manifests included
+all = ["yaml-all", "artifacts-all", "manifests-full"]
+yaml-all = ["yaml-1-5", "yaml-1-6", "yaml-1-7", "yaml-latest", "yaml-latest-fusion"]
+# every artifact version, manifests as projections
+artifacts-all = [
+    "catalog-v0",
+    "catalog-v1",
+    "freshness-v0",
+    "manifest-projection-v0",
+    "manifest-projection-v1",
+    "manifest-projection-v2",
+    "manifest-projection-v3",
+    "manifest-projection-v4",
+    "manifest-projection-v5",
+    "manifest-projection-v6",
+    "manifest-projection-v7",
+    "manifest-projection-v8",
+    "manifest-projection-v9",
+    "manifest-projection-v10",
+    "manifest-projection-v11",
+    "manifest-projection-v12",
+    "run-results-v0",
+    "run-results-v1",
+    "run-results-v2",
+    "run-results-v3",
+    "run-results-v4",
+    "run-results-v5",
+    "run-results-v6",
+    "sources-v0",
+    "sources-v1",
+    "sources-v2",
+    "sources-v3",
+]
+# every manifest version's complete types (large: v12 alone is 186 KB of code)
+manifests-full = [
+    "manifest-v0",
+    "manifest-v1",
+    "manifest-v2",
+    "manifest-v3",
+    "manifest-v4",
+    "manifest-v5",
+    "manifest-v6",
+    "manifest-v7",
+    "manifest-v8",
+    "manifest-v9",
+    "manifest-v10",
+    "manifest-v11",
+    "manifest-v12",
+]
+# by dbt release: what each writes and reads (build/dbt_releases.rs), manifests as
+# projections
+dbt-all = [
+    "dbt-0-19",
+    "dbt-0-20",
+    "dbt-0-21",
+    "dbt-1-0",
+    "dbt-1-1",
+    "dbt-1-2",
+    "dbt-1-3",
+    "dbt-1-4",
+    "dbt-1-5",
+    "dbt-1-6",
+    "dbt-1-7",
+    "dbt-1-8",
+    "dbt-1-9",
+    "dbt-1-10",
+    "dbt-1-11",
+    "dbt-2-0",
+]
+dbt-0 = ["dbt-0-19", "dbt-0-20", "dbt-0-21"]
+dbt-1 = [
+    "dbt-1-0",
+    "dbt-1-1",
+    "dbt-1-2",
+    "dbt-1-3",
+    "dbt-1-4",
+    "dbt-1-5",
+    "dbt-1-6",
+    "dbt-1-7",
+    "dbt-1-8",
+    "dbt-1-9",
+    "dbt-1-10",
+    "dbt-1-11",
+]
+dbt-2 = ["dbt-2-0"]
+dbt-latest = ["dbt-1-11"]
+dbt-fusion = ["dbt-2-0"]
+dbt-0-19 = ["manifest-projection-v1", "run-results-v1", "sources-v1", "catalog-v1"]
+dbt-0-20 = ["manifest-projection-v2", "run-results-v2", "sources-v1", "catalog-v1"]
+dbt-0-21 = ["manifest-projection-v3", "run-results-v3", "sources-v2", "catalog-v1"]
+dbt-1-0 = ["manifest-projection-v4", "run-results-v4", "sources-v3", "catalog-v1"]
+dbt-1-1 = ["manifest-projection-v5", "run-results-v4", "sources-v3", "catalog-v1"]
+dbt-1-2 = ["manifest-projection-v6", "run-results-v4", "sources-v3", "catalog-v1"]
+dbt-1-3 = ["manifest-projection-v7", "run-results-v4", "sources-v3", "catalog-v1"]
+dbt-1-4 = ["manifest-projection-v8", "run-results-v4", "sources-v3", "catalog-v1"]
+dbt-1-5 = [
+    "manifest-projection-v9",
+    "run-results-v4",
+    "sources-v3",
+    "catalog-v1",
+    "yaml-1-5",
+]
+dbt-1-6 = [
+    "manifest-projection-v10",
+    "run-results-v4",
+    "sources-v3",
+    "catalog-v1",
+    "yaml-1-6",
+]
+dbt-1-7 = [
+    "manifest-projection-v11",
+    "run-results-v5",
+    "sources-v3",
+    "catalog-v1",
+    "yaml-1-7",
+]
+dbt-1-8 = [
+    "manifest-projection-v12",
+    "run-results-v6",
+    "sources-v3",
+    "catalog-v1",
+    "yaml-latest",
+]
+dbt-1-9 = [
+    "manifest-projection-v12",
+    "run-results-v6",
+    "sources-v3",
+    "catalog-v1",
+    "yaml-latest",
+]
+dbt-1-10 = [
+    "manifest-projection-v12",
+    "run-results-v6",
+    "sources-v3",
+    "catalog-v1",
+    "yaml-latest",
+]
+dbt-1-11 = [
+    "manifest-projection-v12",
+    "run-results-v6",
+    "sources-v3",
+    "catalog-v1",
+    "yaml-latest",
+]
+dbt-2-0 = [
+    "manifest-projection-v12",
+    "run-results-v6",
+    "sources-v3",
+    "catalog-v1",
+    "freshness-v0",
+    "yaml-latest-fusion",
+]
+catalog-v0 = []
+catalog-v1 = []
+freshness-v0 = []
+manifest-v0 = []
+manifest-v1 = []
+manifest-v2 = []
+manifest-v3 = []
+manifest-v4 = []
+manifest-v5 = []
+manifest-v6 = []
+manifest-v7 = []
+manifest-v8 = []
+manifest-v9 = []
+manifest-v10 = []
+manifest-v11 = []
+manifest-v12 = []
+manifest-projection-v0 = []
+manifest-projection-v1 = []
+manifest-projection-v2 = []
+manifest-projection-v3 = []
+manifest-projection-v4 = []
+manifest-projection-v5 = []
+manifest-projection-v6 = []
+manifest-projection-v7 = []
+manifest-projection-v8 = []
+manifest-projection-v9 = []
+manifest-projection-v10 = []
+manifest-projection-v11 = []
+manifest-projection-v12 = []
+run-results-v0 = []
+run-results-v1 = []
+run-results-v2 = []
+run-results-v3 = []
+run-results-v4 = []
+run-results-v5 = []
+run-results-v6 = []
+sources-v0 = []
+sources-v1 = []
+sources-v2 = []
+sources-v3 = []
+yaml-1-5 = []
+yaml-1-6 = []
+yaml-1-7 = []
+yaml-latest = []
+yaml-latest-fusion = []
 
 [dependencies]
 regress = "0.12"

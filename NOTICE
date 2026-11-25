@@ -2,18 +2,15 @@ dbt-schemas
 
 The Rust code of this crate is under the MIT licence (LICENSE).
 
-The JSON Schemas under schemas/yaml/ and schemas/artifacts/ are copies of
-dbt Labs' schemas, under the Apache License 2.0 (LICENSE-APACHE):
+The JSON Schemas are dbt Labs', under the Apache License 2.0
+(LICENSE-APACHE), and are not copied into this repository: they are its two
+git submodules, at the commits .gitmodules and the tree pin.
 
-  schemas/yaml/*-latest.json
+  schemas/upstream/dbt-jsonschema
     https://github.com/dbt-labs/dbt-jsonschema
-    commit 6a401244651d3b5e0fd2f7cfcfb120187118edb4
-    schemas/latest/{dbt_project,dbt_yml_files,packages,selectors}-latest.json
 
-  schemas/artifacts/*.json
+  schemas/upstream/schemas.getdbt.com
     https://github.com/dbt-labs/schemas.getdbt.com
-    commit d63e174a73312504393e8e1c21c0ef560d474860
-    dbt/{manifest/v12,run-results/v6,sources/v3,catalog/v1}.json
 
-What build.rs derives from them (build/preprocess.rs) is under the same
-licence.
+A published package of this crate carries their JSON files. What build.rs
+derives from them (build/preprocess.rs) is under the same licence.

@@ -444,53 +444,83 @@ fn node_map(title: &str, fields: Vec<(&'static str, Value)>) -> Value {
     })
 }
 
-/// The manifest schema consumers compile, out of the pristine manifest
-/// schema's text. Panics, failing the build, when a projected name no longer
-/// appears upstream.
-pub fn manifest_projection(pristine_text: &str) -> Value {
-    let names = |fields: Vec<(&'static str, Value)>| -> Vec<&'static str> {
-        fields.into_iter().map(|(k, _)| k).collect()
-    };
-    let asserted = [
-        names(projection_meta_fields()),
-        names(projection_node_fields()),
-        PROJECTION_CONFIG_KEYS.to_vec(),
-        names(projection_source_fields()),
-        names(projection_macro_fields()),
-        vec![
-            "nodes",
-            "sources",
-            "macros",
-            "metadata",
-            "parent_map",
-            "child_map",
-        ],
-    ]
-    .concat();
-    for name in asserted {
-        assert!(
-            pristine_text.contains(&format!("\"{name}\"")),
-            "projected field {name:?} no longer appears in the pristine manifest schema — \
-             upstream renamed it; update the projection"
-        );
+/// The manifest projection of one version, out of that version's pristine
+/// schema text.
+///
+/// For the newest version (`strict`) every projected name must still appear
+/// upstream, or this panics and fails the build: an upstream rename cannot
+/// drift silently. An older version is a fixed document, so its projection
+/// keeps only the names its schema has (v0 has no `macros`, for one).
+pub fn manifest_projection(pristine_text: &str, version: u32, strict: bool) -> Value {
+    let has = |name: &str| pristine_text.contains(&format!("\"{name}\""));
+    if strict {
+        let names = |fields: Vec<(&'static str, Value)>| -> Vec<&'static str> {
+            fields.into_iter().map(|(k, _)| k).collect()
+        };
+        let asserted = [
+            names(projection_meta_fields()),
+            names(projection_node_fields()),
+            PROJECTION_CONFIG_KEYS.to_vec(),
+            names(projection_source_fields()),
+            names(projection_macro_fields()),
+            TOP_LEVEL.to_vec(),
+        ]
+        .concat();
+        for name in asserted {
+            assert!(
+                has(name),
+                "projected field {name:?} no longer appears in the pristine manifest v{version} \
+                 schema — upstream renamed it; update the projection"
+            );
+        }
     }
+    let kept = |fields: Vec<(&'static str, Value)>| -> Vec<(&'static str, Value)> {
+        fields.into_iter().filter(|(k, _)| has(k)).collect()
+    };
     let id_map = json!({"type": "object", "additionalProperties": strings()});
+    let mut properties = serde_json::Map::new();
+    let mut add = |name: &str, value: Value| {
+        if has(name) {
+            properties.insert(name.to_string(), value);
+        }
+    };
+    add(
+        "metadata",
+        json!({
+            "title": "ManifestProjectionMetadata",
+            "type": "object",
+            "properties": object(kept(projection_meta_fields())),
+        }),
+    );
+    add(
+        "nodes",
+        node_map("ManifestProjectionNode", kept(projection_node_fields())),
+    );
+    add(
+        "sources",
+        node_map("ManifestProjectionSource", kept(projection_source_fields())),
+    );
+    add(
+        "macros",
+        node_map("ManifestProjectionMacro", kept(projection_macro_fields())),
+    );
+    add("parent_map", id_map.clone());
+    add("child_map", id_map);
     json!({
         "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "$id": "https://schemas.getdbt.com/dbt/manifest/v12.json#dbt-schemas-projection",
+        "$id": format!("https://schemas.getdbt.com/dbt/manifest/v{version}.json#dbt-schemas-projection"),
         "title": "ManifestProjection",
         "type": "object",
-        "properties": {
-            "metadata": {
-                "title": "ManifestProjectionMetadata",
-                "type": "object",
-                "properties": object(projection_meta_fields()),
-            },
-            "nodes": node_map("ManifestProjectionNode", projection_node_fields()),
-            "sources": node_map("ManifestProjectionSource", projection_source_fields()),
-            "macros": node_map("ManifestProjectionMacro", projection_macro_fields()),
-            "parent_map": id_map.clone(),
-            "child_map": id_map,
-        },
+        "properties": properties,
     })
 }
+
+/// The top-level maps of a manifest the projection reads.
+const TOP_LEVEL: &[&str] = &[
+    "nodes",
+    "sources",
+    "macros",
+    "metadata",
+    "parent_map",
+    "child_map",
+];
