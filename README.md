@@ -137,6 +137,13 @@ types as soon as they are read.
   and some fields (`stats`, `execution_time`, `generated_at` of a catalog) as
   any JSON value. The `$id` constants in `artifacts` are for tracing which
   dbt wrote a file, never for refusing it.
+- **The derives.** Every type derives `Debug`, `Clone`, `PartialEq` and serde's
+  two, `Default` where every field has one, and `Eq` and `Hash` wherever no
+  float is inside it, at any depth (`build/derives.rs`): so a document can be
+  compared, and most of its parts used as keys. Maps are `BTreeMap`, which has
+  both and serializes in key order. A float upstream adds to a schema takes
+  `Eq` and `Hash` from every type that reaches it, which a release then says
+  is breaking.
 - **The manifest is a projection.** Typifying the 946 KB schema would cost
   thousands of types; `--mode=manifest-projection` the projection emits the fields
   consumers read (node identity, code, checksum, dependencies, `relation_name`,
@@ -150,6 +157,7 @@ types as soon as they are read.
     schemas/upstream/schemas.getdbt.com/    git submodule of dbt-labs/schemas.getdbt.com
     build/catalog.rs      every schema the submodules hold, as a module and a feature
     build/preprocess.rs   the rules that make a schema typify-digestible, each with why
+    build/derives.rs      which types derive Eq and Hash: those with no float inside
     build/avro.rs         a processed schema as an Avro schema (feature `avro`)
     build.rs              preprocesses each schema whose feature is on and generates its
                           types with typify into OUT_DIR, at build time
