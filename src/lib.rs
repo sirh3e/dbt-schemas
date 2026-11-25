@@ -21,7 +21,8 @@
 //!
 //! The schemas are the upstream repositories, git submodules under
 //! `schemas/upstream/`; `build.rs` preprocesses them (`build/preprocess.rs`)
-//! and generates the types with typify at build time. See the README.
+//! and generates the types with typify at build time. See the README, and
+//! `examples/` for runnable programs that use each module.
 
 pub mod artifacts;
 #[cfg(feature = "avro")]

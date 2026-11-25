@@ -70,15 +70,90 @@ dbt-schemas = { git = "https://github.com/sirh3e/dbt-schemas", tag = "v0.1.1", d
 | `avro` | (feature `avro`) every schema built as an Avro schema, `encode` and `decode` |
 | `processed` | the processed schemas as text (`processed::ALL`, `processed::schema("yaml/v1_6/dbt_project")`) and the latest YAML ones parsed |
 
+## Usage
+
+Add it, pinned by a release's tag; the default features read what the newest
+dbt release writes (see the feature table above for another release):
+
+```toml
+[dependencies]
+dbt-schemas = { git = "https://github.com/sirh3e/dbt-schemas", tag = "v0.1.1" }
+serde_json = "1"
+```
+
+Each example below is a runnable program in [`examples/`](examples/), built by
+CI with the rest; run one with `cargo run --example <name>`, with a path or
+words after `--` or on its built-in sample. They are written as the crate is:
+small pure functions composed into a result, with the files and the printing
+left to `main`.
+
+| Example | Shows |
+|---|---|
+| [`read_project`](examples/read_project.rs) | a `dbt_project.yml` into `DbtProject`, and where each key is written |
+| [`run_results`](examples/run_results.rs) | a `run_results.json` of any version, counted by status, and the dbt releases it can be from |
+| [`dbt_release`](examples/dbt_release.rs) | what a dbt version writes and the feature that builds it, and which releases write a schema |
+| [`complete`](examples/complete.rs) | the keys a properties file allows at a YAML path, for an editor's completion |
+
+**A YAML file, typed and with positions.** Parse once; the same tree gives
+the value and where each node is:
+
 ```rust
 use std::path::Path;
 use dbt_schemas::{generated::dbt_project::DbtProject, yaml};
 
-let path = Path::new("dbt_project.yml");
-let marked = yaml::load_marked("name: shop\nmodel-paths: [models]\n", path)?;
-let project: DbtProject = yaml::from_json(yaml::to_json(&marked), path)?;
-let name_at = yaml::position_of(yaml::get(&marked, "name").unwrap());
-# Ok::<_, dbt_schemas::Error>(())
+fn project_name(text: &str, path: &Path) -> dbt_schemas::Result<(String, dbt_schemas::Position)> {
+    let marked = yaml::load_marked(text, path)?;
+    let project: DbtProject = yaml::from_json(yaml::to_json(&marked), path)?;
+    let at = yaml::get(&marked, "name").map(yaml::position_of).unwrap_or_default();
+    Ok((project.name, at))
+}
+```
+
+A real project's `config:` blocks often break the strict YAML types (see
+below): prune the value from `to_json` to the keys you read before `from_json`.
+
+**An artifact of whichever version wrote it.** `Any<Family>::from_value`
+reads a document as the schema its `metadata.dbt_schema_version` names; the
+enum is `#[non_exhaustive]` and has a variant for each version the build has,
+so keep a last arm for the others:
+
+```rust
+use dbt_schemas::artifacts::AnyRunResults;
+
+fn failed(value: serde_json::Value) -> Result<Vec<String>, String> {
+    match AnyRunResults::from_value(value).map_err(|e| e.to_string())? {
+        AnyRunResults::V6(run) => Ok(run
+            .results
+            .into_iter()
+            .filter(|r| r.status.as_deref() == Some("fail"))
+            .filter_map(|r| r.unique_id)
+            .collect()),
+        other => Err(format!("run results v{} are not read here", other.version())),
+    }
+}
+```
+
+Every field of an artifact type is an `Option` and unknown fields pass, so
+one type reads the files of many dbt versions. `artifacts::sniff(&value)`
+says which schema a document names without reading it, and
+`artifacts::dbt_releases(&value)` which dbt releases it can be from.
+
+**A dbt release's schemas.**
+
+```rust
+let release = dbt_schemas::dbt::release("1.7.14").expect("a known release");
+assert_eq!(release.schema("manifest"), Some(11));
+assert_eq!(release.feature, "dbt-1-7"); // turn it on to read what 1.7 writes
+let built = release.built;              // whether this build has those schemas
+```
+
+**Completion along a YAML path.**
+
+```rust
+use dbt_schemas::schema_walk::{properties_keys_at, properties_values_at, Step};
+
+let column_keys = properties_keys_at(&[Step::Key("models"), Step::Item, Step::Key("columns"), Step::Item]);
+let access = properties_values_at(&[Step::Key("models"), Step::Item, Step::Key("access")]);
 ```
 
 ## Avro (feature `avro`)
