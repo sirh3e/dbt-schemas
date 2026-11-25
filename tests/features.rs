@@ -72,6 +72,11 @@ fn expected() -> String {
         "# every manifest version's complete types (large: v12 alone is 186 KB of code)\n",
     );
     out.push_str(&format!("manifests-full = {}\n", list(&manifests)));
+    out.push_str(
+        "# Avro schemas of every schema the other features build, and documents\n\
+         # encoded with them (the `avro` module, apache-avro): opt in, in no group\n\
+         avro = [\"dep:apache-avro\"]\n",
+    );
     out.push_str(&dbt_features());
     let mut each = of(&[Kind::Yaml, Kind::Artifact, Kind::ManifestProjection]);
     each.sort_by_key(|f| sort_key(f));

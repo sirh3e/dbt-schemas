@@ -67,6 +67,7 @@ dbt-schemas = { git = "https://github.com/sirh3e/dbt-schemas", tag = "v0.1.1", d
 |---|---|
 | `yaml` | `load_marked`, `to_json`, `from_json`, `get`, `as_str`, `entries`, `items`, `position_of`, `span_of`, `syntax_error`, `Position`, `Span` |
 | `schema_keys`, `schema_walk` | the property names and values the latest schemas allow, at the top or along any YAML path, for completion |
+| `avro` | (feature `avro`) every schema built as an Avro schema, `encode` and `decode` |
 | `processed` | the processed schemas as text (`processed::ALL`, `processed::schema("yaml/v1_6/dbt_project")`) and the latest YAML ones parsed |
 
 ```rust
@@ -79,6 +80,47 @@ let project: DbtProject = yaml::from_json(yaml::to_json(&marked), path)?;
 let name_at = yaml::position_of(yaml::get(&marked, "name").unwrap());
 # Ok::<_, dbt_schemas::Error>(())
 ```
+
+## Avro (feature `avro`)
+
+Opt in with the `avro` feature, which is in no group and not in the
+defaults; it adds [apache-avro](https://crates.io/crates/apache-avro) 0.21.
+`build.rs` then writes an Avro schema (`.avsc`) beside each JSON Schema the
+other features build, the YAML ones included, and `avro` encodes documents
+with them:
+
+```toml
+dbt-schemas = { git = "https://github.com/sirh3e/dbt-schemas", tag = "…", features = ["avro"] }
+```
+
+```rust
+use dbt_schemas::avro;
+
+let schema = avro::schema_of(&run_results)?;     // run_results/v6, by its dbt_schema_version
+let bytes = schema.encode(&run_results)?;        // one Avro datum
+let back = schema.decode(&bytes)?;               // the document, as far as the schema knows it
+let writer = apache_avro::Writer::new(schema.apache(), Vec::new()); // a container file
+```
+
+- **Which schema:** `avro::schema("run_results/v6")` by module path, as
+  `processed::schema` takes it, or `avro::schema_of(&json)` by the document's
+  `metadata.dbt_schema_version` (a manifest as its projection; the complete
+  one is `avro::schema("manifest/v12")`). `avro::ALL` lists every `.avsc`.
+- **The mapping** is `build/avro.rs`, one rule per JSON Schema keyword: an
+  object with properties is a record, one without is a map, an optional field
+  is `["null", T]` with a `null` default, an enum is a string, a `$ref` is a
+  named record, a union is a union. What Avro cannot hold, and what the schema
+  leaves open (`config`, `adapter_response`), is **any JSON**: a string of the
+  value's JSON text, marked `"dbt_schemas.json": true`. A key Avro refuses as
+  a name (`post-hook`) is `post_hook`, its JSON name kept in `"dbt_schemas.name"`.
+- **What is lost:** unknown fields, which an Avro record has no room for (the
+  generated types let them pass); the difference between a `null` and an
+  absent field; and whether a whole `double` was written `3` or `3.0`. A
+  document reads back as the generated types read it; `tests/avro.rs` holds
+  the two to each other.
+- A document is walked against its schema, not through serde, so the values
+  are the JSON's own. Maps have no order in Avro, so the bytes of two
+  encodings of one document may differ.
 
 ## What the types are, and are not
 
@@ -108,6 +150,7 @@ types as soon as they are read.
     schemas/upstream/schemas.getdbt.com/    git submodule of dbt-labs/schemas.getdbt.com
     build/catalog.rs      every schema the submodules hold, as a module and a feature
     build/preprocess.rs   the rules that make a schema typify-digestible, each with why
+    build/avro.rs         a processed schema as an Avro schema (feature `avro`)
     build.rs              preprocesses each schema whose feature is on and generates its
                           types with typify into OUT_DIR, at build time
 

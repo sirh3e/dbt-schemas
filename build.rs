@@ -8,6 +8,7 @@
 //! - `<stem>.json`: the schema after `build/preprocess.rs`'s rules;
 //! - `<stem>.rs`: the types typify generates from it — the same calls
 //!   `typify::import_types!` makes, with `unknown_crates = Allow`;
+//! - with the `avro` feature, `<stem>.avsc`: its Avro schema (`build/avro.rs`);
 //!
 //! and once `index.rs`: the module tree, each artifact family's newest
 //! version re-exported at its root, and the version dispatch (`Any<Family>`),
@@ -19,6 +20,8 @@ use std::path::{Path, PathBuf};
 
 use typify::{TypeSpace, TypeSpaceSettings, UnknownPolicy};
 
+#[path = "build/avro.rs"]
+mod avro;
 #[path = "build/catalog.rs"]
 mod catalog;
 #[path = "build/dbt_releases.rs"]
@@ -82,6 +85,13 @@ fn main() {
         let (code, root) = generate(entry, &json);
         write(&out, &format!("{}.json", entry.stem()), &json);
         write(&out, &format!("{}.rs", entry.stem()), &code);
+        if enabled("avro") {
+            write(
+                &out,
+                &format!("{}.avsc", entry.stem()),
+                &avsc(&processed, entry),
+            );
+        }
         built.push((entry.clone(), root));
     }
     write(&out, "index.rs", &index(&entries, &built));
@@ -101,6 +111,19 @@ fn name_the_root(value: &mut serde_json::Value, entry: &Entry) {
         };
         root.insert("title".into(), title.into());
     }
+}
+
+/// The Avro schema of a processed schema, its named types in the module's
+/// namespace (`dbt_schemas.run_results.v6`).
+fn avsc(processed: &serde_json::Value, entry: &Entry) -> String {
+    let namespace = std::iter::once("dbt_schemas")
+        .chain(entry.group.split('/'))
+        .chain(std::iter::once(entry.name.as_str()))
+        .map(avro::avro_name)
+        .collect::<Vec<_>>()
+        .join(".");
+    serde_json::to_string_pretty(&avro::avro_schema(processed, &namespace))
+        .expect("a value serializes")
 }
 
 /// Whether cargo enabled `feature` for this build.
@@ -175,6 +198,9 @@ fn index(entries: &[Entry], built: &[(Entry, Option<String>)]) -> String {
     out.push_str(&dispatch(entries, built));
     out.push_str(&artifact_reexports(&tree, built));
     out.push_str(&processed_table(built));
+    if enabled("avro") {
+        out.push_str(&avro_table(built));
+    }
     out.push_str(&schema_ids(entries));
     out.push_str(&releases());
     out
@@ -357,6 +383,25 @@ fn processed_table(built: &[(Entry, Option<String>)]) -> String {
     }
     out.push_str("];\n");
     out
+}
+
+/// Every Avro schema this build has, by module path, as `processed_table`.
+fn avro_table(built: &[(Entry, Option<String>)]) -> String {
+    let rows: String = built
+        .iter()
+        .map(|(entry, _)| {
+            format!(
+                "    (\"{}/{}\", include_str!(concat!(env!(\"OUT_DIR\"), \"/{}.avsc\"))),\n",
+                entry.group,
+                entry.name,
+                entry.stem()
+            )
+        })
+        .collect();
+    format!(
+        "\n/// Every Avro schema this build has: its module path and its `.avsc` text.\n\
+         pub const AVRO: &[(&str, &str)] = &[\n{rows}];\n"
+    )
 }
 
 /// The `$id` of every artifact schema upstream holds, built or not.
