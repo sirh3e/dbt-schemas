@@ -4,6 +4,15 @@ All notable changes to dbt-schemas, the Rust types of dbt's YAML files
 and JSON artifacts.
 
 <!-- git-cliff: end of header -->
+## [0.2.0] - 2026-11-25
+
+### 🚀 Features
+
+- *(avro)* An opt-in feature of Avro schemas and documents written with them
+
+### ⚙️ Miscellaneous Tasks
+
+- *(release)* V0.2.0
 ## [0.1.1] - 2026-11-25
 
 ### 🚀 Features
@@ -17,6 +26,7 @@ and JSON artifacts.
 
 - Generate the types in build.rs, and add git-cliff, hooks and a justfile
 - Actions/checkout v5, which runs on Node.js 24
+- *(release)* V0.1.1
 ## [0.1.0] - 2026-11-25
 
 ### 🚀 Features
