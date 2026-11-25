@@ -14,11 +14,14 @@
 //! version re-exported at its root, and the version dispatch (`Any<Family>`),
 //! which `src/generated.rs` includes.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 
-use typify::{TypeSpace, TypeSpaceSettings, UnknownPolicy};
+use typify::{
+    TypeDetails, TypeEnumVariant, TypeId, TypeSpace, TypeSpacePatch, TypeSpaceSettings,
+    UnknownPolicy,
+};
 
 #[path = "build/avro.rs"]
 mod avro;
@@ -26,6 +29,8 @@ mod avro;
 mod catalog;
 #[path = "build/dbt_releases.rs"]
 mod dbt_releases;
+#[path = "build/derives.rs"]
+mod derives;
 #[path = "build/preprocess.rs"]
 mod preprocess;
 
@@ -137,25 +142,139 @@ fn write(out: &Path, name: &str, text: &str) {
 }
 
 /// typify's types of one processed schema, and the name of its root type.
+///
+/// Every type derives `PartialEq`, and `Eq` and `Hash` where no float is
+/// inside it (`build/derives.rs`); maps are `BTreeMap`, which has both. That
+/// takes two passes: the first reads which types hold what, the second
+/// generates them with a patch adding `Eq` and `Hash` to those that can.
 fn generate(entry: &Entry, processed: &str) -> (String, Option<String>) {
-    let root: schemars::schema::RootSchema = serde_json::from_str(processed).unwrap_or_else(|e| {
-        panic!(
-            "the processed {} is no JSON Schema: {e}",
-            entry.path.display()
-        )
-    });
-    let mut settings = TypeSpaceSettings::default();
-    settings.with_unknown_crates(UnknownPolicy::Allow);
-    let mut types = TypeSpace::new(&settings);
-    let id = types.add_root_schema(root).unwrap_or_else(|e| {
-        panic!(
-            "typify cannot read {}: {e} — fix build/preprocess.rs, or list it in \
-             UNSUPPORTED of build.rs with why",
-            entry.path.display()
-        )
-    });
+    let read = |settings: &TypeSpaceSettings| {
+        let root: schemars::schema::RootSchema =
+            serde_json::from_str(processed).unwrap_or_else(|e| {
+                panic!(
+                    "the processed {} is no JSON Schema: {e}",
+                    entry.path.display()
+                )
+            });
+        let mut types = TypeSpace::new(settings);
+        let id = types.add_root_schema(root).unwrap_or_else(|e| {
+            panic!(
+                "typify cannot read {}: {e} — fix build/preprocess.rs, or list it in \
+                 UNSUPPORTED of build.rs with why",
+                entry.path.display()
+            )
+        });
+        (types, id)
+    };
+    let (first, _) = read(&settings(&BTreeSet::new()));
+    let hashable = derives::hashable(&graph(&first));
+    let (types, id) = read(&settings(&hashable));
+    let code = types.to_stream().to_string();
+    let unpatched: Vec<&String> = hashable
+        .iter()
+        .filter(|name| !derives_hash(&code, name))
+        .collect();
+    assert!(
+        unpatched.is_empty(),
+        "{}: typify named these types otherwise in its second pass, so they lost Eq and \
+         Hash: {unpatched:?}",
+        entry.path.display()
+    );
     let name = id.and_then(|id| types.get_type(&id).ok().map(|t| t.name()));
-    (types.to_stream().to_string(), name)
+    (code, name)
+}
+
+/// The settings of every type space: unknown crates allowed, maps as
+/// `BTreeMap`, `PartialEq` on every type, and `Eq` and `Hash` on `hashable`.
+fn settings(hashable: &BTreeSet<String>) -> TypeSpaceSettings {
+    let mut patch = TypeSpacePatch::default();
+    patch.with_derive("Eq").with_derive("Hash");
+    let mut settings = TypeSpaceSettings::default();
+    settings
+        .with_unknown_crates(UnknownPolicy::Allow)
+        .with_map_type("::std::collections::BTreeMap")
+        .with_derive("PartialEq".to_string());
+    hashable.iter().fold(settings, |mut settings, name| {
+        settings.with_patch(name, &patch);
+        settings
+    })
+}
+
+/// Whether the generated code's type of that name derives `Hash`: the last
+/// `#[derive(..)]` before its `pub struct` or `pub enum` names it.
+fn derives_hash(code: &str, name: &str) -> bool {
+    [format!("pub struct {name} "), format!("pub enum {name} ")]
+        .iter()
+        .filter_map(|head| code.find(head.as_str()))
+        .any(|at| {
+            let before = &code[..at];
+            before
+                .rfind("# [derive (")
+                .map(|start| &before[start..])
+                .and_then(|derive| derive.split(')').next())
+                .is_some_and(|list| list.split(',').any(|d| d.trim() == "Hash"))
+        })
+}
+
+/// What each named type of a type space holds, one named type or builtin
+/// down: the graph `derives::hashable` reads.
+fn graph(types: &TypeSpace) -> BTreeMap<String, Vec<derives::Part>> {
+    types
+        .iter_types()
+        .filter(named)
+        .map(|t| {
+            let ids: Vec<TypeId> = match t.details() {
+                TypeDetails::Struct(s) => s.properties().map(|(_, id)| id).collect(),
+                TypeDetails::Enum(e) => e
+                    .variants()
+                    .flat_map(|(_, variant)| match variant {
+                        TypeEnumVariant::Simple => Vec::new(),
+                        TypeEnumVariant::Tuple(ids) => ids,
+                        TypeEnumVariant::Struct(fields) => {
+                            fields.into_iter().map(|(_, id)| id).collect()
+                        }
+                    })
+                    .collect(),
+                TypeDetails::Newtype(n) => vec![n.inner()],
+                _ => Vec::new(),
+            };
+            let parts = ids.iter().flat_map(|id| parts(types, id)).collect();
+            (t.name(), parts)
+        })
+        .collect()
+}
+
+/// A struct, an enum or a newtype: a type with a name of its own.
+fn named(t: &typify::Type) -> bool {
+    matches!(
+        t.details(),
+        TypeDetails::Struct(_) | TypeDetails::Enum(_) | TypeDetails::Newtype(_)
+    )
+}
+
+/// The named types and builtins a type id stands for: itself if it is named,
+/// else what it wraps (an `Option`, a `Vec`, a map, a tuple, …).
+fn parts(types: &TypeSpace, id: &TypeId) -> Vec<derives::Part> {
+    let Ok(t) = types.get_type(id) else {
+        return Vec::new();
+    };
+    let inner = |ids: Vec<TypeId>| -> Vec<derives::Part> {
+        ids.iter().flat_map(|id| parts(types, id)).collect()
+    };
+    match t.details() {
+        TypeDetails::Struct(_) | TypeDetails::Enum(_) | TypeDetails::Newtype(_) => {
+            vec![derives::Part::Type(t.name())]
+        }
+        TypeDetails::Option(id)
+        | TypeDetails::Vec(id)
+        | TypeDetails::Set(id)
+        | TypeDetails::Box(id)
+        | TypeDetails::Array(id, _) => inner(vec![id]),
+        TypeDetails::Map(key, value) => inner(vec![key, value]),
+        TypeDetails::Tuple(ids) => inner(ids.collect()),
+        TypeDetails::Builtin(path) => vec![derives::Part::Builtin(path.to_string())],
+        TypeDetails::String | TypeDetails::Unit => Vec::new(),
+    }
 }
 
 /// A module tree: path segments to their children, leaves to their files.

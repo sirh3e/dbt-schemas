@@ -9,6 +9,8 @@
 //!   `yaml::v1_6::dependencies`, `yaml::latest_fusion::profiles`, …
 //! - `<family>::v<N>`: `run_results::v5`, `catalog::v0`, `manifest::v12`
 //!   (the complete types); `manifest::projection::v<N>` the projection.
+//! - Every type derives `PartialEq`, and `Eq` and `Hash` where no float is
+//!   inside it; maps are `BTreeMap` (`build/derives.rs`).
 //! - A family's root re-exports its newest version: `run_results::*` is
 //!   `run_results::v6::*`, and `manifest::*` is the newest projection.
 //!
