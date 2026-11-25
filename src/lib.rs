@@ -14,8 +14,9 @@
 //!   schemas allow, at the top or along any YAML path, for completion.
 //! - [`processed`]: the processed YAML schemas as text and parsed.
 //!
-//! The schemas are vendored pristine under `schemas/` and preprocessed for
-//! typify by `schemas/preprocess.py`; see the README.
+//! The schemas are vendored pristine under `schemas/`; `build.rs` preprocesses
+//! them (`build/preprocess.rs`) and generates the types with typify at build
+//! time. See the README.
 
 pub mod artifacts;
 mod error;
