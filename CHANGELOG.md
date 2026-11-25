@@ -4,6 +4,11 @@ All notable changes to dbt-schemas, the Rust types of dbt's YAML files
 and JSON artifacts.
 
 <!-- git-cliff: end of header -->
+## [0.3.0] - 2026-11-25
+
+### 🚀 Features
+
+- *(types)* [**breaking**] PartialEq on every generated type, Eq and Hash where no float is inside
 ## [0.2.0] - 2026-11-25
 
 ### 🚀 Features
