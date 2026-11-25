@@ -1,3 +1,9 @@
+#![cfg(all(
+    feature = "catalog-v1",
+    feature = "manifest-projection-v12",
+    feature = "run-results-v6",
+    feature = "sources-v3"
+))]
 //! The generated artifact types: the leniency the preprocess
 //! artifact mode manufactures — unknown fields pass, every field is
 //! optional, statuses are plain strings, object unions read merged.

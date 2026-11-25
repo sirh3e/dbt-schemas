@@ -15,6 +15,16 @@ build:
 test:
     cargo test
 
+# Build and test every variant and version (all features)
+[group('build')]
+test-all:
+    cargo test --all-features
+
+# Build each feature alone (cargo-hack)
+[group('build')]
+check-each:
+    cargo hack check --each-feature --no-dev-deps
+
 # (the processed schemas, and the generated types formatted with rustfmt)
 # Write what build.rs made into target/schemas/, to read
 [group('build')]
@@ -31,9 +41,14 @@ generated:
 
 # ------------------------------------------------------------------- ci
 
-# Everything CI checks: formatting, lints, tests
+# Rustfmt, clippy and the tests of the default features
 [group('ci')]
 check: fmt-check lint test
+
+# (every feature, no feature, each feature alone)
+# Everything CI checks
+[group('ci')]
+check-all: check test-all lint-all check-each
 
 # Format the code
 [group('ci')]
@@ -50,6 +65,12 @@ fmt-check:
 lint:
     cargo clippy --all-targets -- -D warnings
 
+# Clippy with every feature, and with none
+[group('ci')]
+lint-all:
+    cargo clippy --all-targets --all-features -- -D warnings
+    cargo clippy --all-targets --no-default-features -- -D warnings
+
 # Install the git hooks (pre-commit and commit-msg) via prek
 [group('ci')]
 hooks:
@@ -59,6 +80,24 @@ hooks:
 [group('ci')]
 hooks-run:
     prek run --all-files
+
+# ------------------------------------------------------------- upstream
+
+# Fetch the upstream submodules at the commits this checkout pins
+[group('upstream')]
+submodules:
+    git submodule update --init
+
+# Write Cargo.toml's [features] again from what the submodules hold
+[group('upstream')]
+features:
+    DBT_SCHEMAS_WRITE=1 cargo test --quiet --test features
+
+# (needs a clean tree, just, git-cliff and cargo-semver-checks)
+# What the upstream workflow does: follow upstream, commit the sync and its release
+[group('upstream')]
+sync:
+    scripts/sync-upstream.sh
 
 # -------------------------------------------------------------- release
 
@@ -99,8 +138,8 @@ release-prep version:
     echo "release/v$v ready — push it and open a pull request titled 'chore(release): v$v';"
     echo "after its merge, on updated main: just release-tag $v"
 
-# (the push is left to you, as a tag is what consumers pin:
-# `dbt-schemas = { git = …, tag = "v<version>" }`)
+# (release.yml does this by itself for whatever lands on main; this is for a
+# machine, and leaves the push to you)
 # Tag the merged release commit on main
 [group('release')]
 release-tag version:

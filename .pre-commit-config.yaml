@@ -28,6 +28,11 @@ repos:
         language: system
         files: \.(rs|json|toml)$
         pass_filenames: false
+      - id: shellcheck
+        name: shellcheck
+        entry: shellcheck
+        language: system
+        types: [shell]
       - id: conventional-commit
         name: the commit message is a Conventional Commit (git-cliff reads it)
         entry: scripts/conventional-commit.sh

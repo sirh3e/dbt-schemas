@@ -143,8 +143,8 @@ fn keys_keep_the_pristine_order() {
 
 #[test]
 fn the_projection_asserts_its_names_upstream() {
-    let pristine = include_str!("../schemas/artifacts/manifest-v12.json");
-    let projection = manifest_projection(pristine);
+    let pristine = include_str!("../schemas/upstream/schemas.getdbt.com/dbt/manifest/v12.json");
+    let projection = manifest_projection(pristine, 12, true);
     let node = &projection["properties"]["nodes"]["additionalProperties"]["properties"];
     for any in ["relation_name", "config", "columns"] {
         assert_eq!(node[any], json!({}), "{any} is any-valued");
@@ -153,7 +153,23 @@ fn the_projection_asserts_its_names_upstream() {
 }
 
 #[test]
-#[should_panic(expected = "no longer appears in the pristine manifest schema")]
+#[should_panic(expected = "no longer appears in the pristine manifest v13 schema")]
 fn a_projected_name_gone_upstream_fails_the_build() {
-    manifest_projection(r#"{"nodes": {}}"#);
+    manifest_projection(r#"{"nodes": {}}"#, 13, true);
+}
+
+#[test]
+fn an_older_projection_keeps_what_its_version_has() {
+    let projection = manifest_projection(r#"{"nodes": {"name": 1}, "metadata": {}}"#, 0, false);
+    let properties = projection["properties"].as_object().unwrap();
+    assert_eq!(properties.keys().collect::<Vec<_>>(), ["metadata", "nodes"]);
+    let node = &properties["nodes"]["additionalProperties"]["properties"];
+    assert_eq!(
+        node.as_object().unwrap().keys().collect::<Vec<_>>(),
+        ["name"]
+    );
+    assert_eq!(
+        projection["$id"],
+        "https://schemas.getdbt.com/dbt/manifest/v0.json#dbt-schemas-projection"
+    );
 }

@@ -1,0 +1,8 @@
+[submodule "schemas/upstream/dbt-jsonschema"]
+	path = schemas/upstream/dbt-jsonschema
+	url = https://github.com/dbt-labs/dbt-jsonschema
+	shallow = true
+[submodule "schemas/upstream/schemas.getdbt.com"]
+	path = schemas/upstream/schemas.getdbt.com
+	url = https://github.com/dbt-labs/schemas.getdbt.com
+	shallow = true

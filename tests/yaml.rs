@@ -1,3 +1,4 @@
+#![cfg(feature = "yaml-latest")]
 //! The marked-YAML helpers, and the YAML types read through them.
 
 use std::path::Path;
