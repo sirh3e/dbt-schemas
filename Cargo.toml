@@ -254,3 +254,17 @@ pretty_assertions = "1"
 # the preprocessing rules run in tests as they do in build.rs
 serde_json = { version = "1", features = ["preserve_order"] }
 rstest = "0.28"
+
+# The examples use what the default features build; with fewer features they
+# are left out rather than failing (`cargo clippy --no-default-features`).
+[[example]]
+name = "read_project"
+required-features = ["yaml-latest"]
+
+[[example]]
+name = "run_results"
+required-features = ["run-results-v6"]
+
+[[example]]
+name = "complete"
+required-features = ["yaml-latest"]
