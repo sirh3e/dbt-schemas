@@ -1,0 +1,185 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "https://schemas.getdbt.com/dbt/manifest/v12.json#dbt-schemas-projection",
+ "title": "ManifestProjection",
+ "type": "object",
+ "properties": {
+  "metadata": {
+   "title": "ManifestProjectionMetadata",
+   "type": "object",
+   "properties": {
+    "dbt_schema_version": {
+     "type": "string"
+    },
+    "dbt_version": {
+     "type": "string"
+    },
+    "generated_at": {
+     "type": "string"
+    },
+    "project_name": {
+     "type": "string"
+    },
+    "adapter_type": {
+     "type": "string"
+    }
+   }
+  },
+  "nodes": {
+   "type": "object",
+   "additionalProperties": {
+    "title": "ManifestProjectionNode",
+    "type": "object",
+    "properties": {
+     "unique_id": {
+      "type": "string"
+     },
+     "name": {
+      "type": "string"
+     },
+     "package_name": {
+      "type": "string"
+     },
+     "resource_type": {
+      "type": "string"
+     },
+     "original_file_path": {
+      "type": "string"
+     },
+     "patch_path": {
+      "type": "string"
+     },
+     "attached_node": {
+      "type": "string"
+     },
+     "raw_code": {
+      "type": "string"
+     },
+     "compiled_code": {
+      "type": "string"
+     },
+     "tags": {
+      "type": "array",
+      "items": {
+       "type": "string"
+      }
+     },
+     "checksum": {
+      "title": "ProjectionChecksum",
+      "type": "object",
+      "properties": {
+       "name": {
+        "type": "string"
+       },
+       "checksum": {
+        "type": "string"
+       }
+      }
+     },
+     "depends_on": {
+      "title": "ProjectionDependsOn",
+      "type": "object",
+      "properties": {
+       "nodes": {
+        "type": "array",
+        "items": {
+         "type": "string"
+        }
+       },
+       "macros": {
+        "type": "array",
+        "items": {
+         "type": "string"
+        }
+       }
+      }
+     },
+     "relation_name": {},
+     "config": {},
+     "columns": {}
+    }
+   }
+  },
+  "sources": {
+   "type": "object",
+   "additionalProperties": {
+    "title": "ManifestProjectionSource",
+    "type": "object",
+    "properties": {
+     "unique_id": {
+      "type": "string"
+     },
+     "source_name": {
+      "type": "string"
+     },
+     "name": {
+      "type": "string"
+     },
+     "package_name": {
+      "type": "string"
+     },
+     "relation_name": {
+      "type": "string"
+     },
+     "tags": {
+      "type": "array",
+      "items": {
+       "type": "string"
+      }
+     }
+    }
+   }
+  },
+  "macros": {
+   "type": "object",
+   "additionalProperties": {
+    "title": "ManifestProjectionMacro",
+    "type": "object",
+    "properties": {
+     "unique_id": {
+      "type": "string"
+     },
+     "name": {
+      "type": "string"
+     },
+     "package_name": {
+      "type": "string"
+     },
+     "macro_sql": {
+      "type": "string"
+     },
+     "depends_on": {
+      "title": "ProjectionMacroDependsOn",
+      "type": "object",
+      "properties": {
+       "macros": {
+        "type": "array",
+        "items": {
+         "type": "string"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "parent_map": {
+   "type": "object",
+   "additionalProperties": {
+    "type": "array",
+    "items": {
+     "type": "string"
+    }
+   }
+  },
+  "child_map": {
+   "type": "object",
+   "additionalProperties": {
+    "type": "array",
+    "items": {
+     "type": "string"
+    }
+   }
+  }
+ }
+}

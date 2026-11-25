@@ -1,0 +1,23 @@
+[package]
+name = "dbt-schemas"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT AND Apache-2.0"
+repository = "https://github.com/sirh3e/dbt-schemas"
+description = "Rust types for dbt's YAML files and JSON artifacts, generated from dbt-labs' JSON Schemas, and marked-YAML helpers"
+keywords = ["dbt", "json-schema", "yaml", "manifest"]
+categories = ["parser-implementations", "development-tools"]
+include = ["src/**", "schemas/**/*.json", "schemas/preprocess.py", "schemas/generate.sh", "README.md", "LICENSE", "LICENSE-APACHE", "NOTICE"]
+
+[dependencies]
+regress = "0.12"
+saphyr = "0.3"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+typify = "0.8"
+
+[dev-dependencies]
+pretty_assertions = "1"
+rstest = "0.28"
